@@ -1,0 +1,18 @@
+{
+  "model": "Chitrarth (Krutrim-1 + SigLIP)",
+  "source": "https://github.com/ola-krutrim/Chitrarth/blob/02424f90906af970bd9a77eadfad6b961ee79c54/README.md#5-evaluation-results",
+  "note": "Published numbers, copied verbatim from the Chitrarth README (not re-run here).",
+  "scores": {
+    "Telugu":    {"POPE": 79.9,  "LLaVA-Bench": 54.8, "MMVet": 43.76},
+    "Hindi":     {"POPE": 78.68, "LLaVA-Bench": 51.5, "MMVet": 38.85},
+    "Bengali":   {"POPE": 83.24, "LLaVA-Bench": 53.7, "MMVet": 33.24},
+    "Malayalam": {"POPE": 85.29, "LLaVA-Bench": 55.5, "MMVet": 25.36},
+    "Kannada":   {"POPE": 85.52, "LLaVA-Bench": 58.1, "MMVet": 46.19},
+    "Assamese":  {"POPE": 55.59, "LLaVA-Bench": 59.1, "MMVet": 37.29},
+    "Tamil":     {"POPE": 83.28, "LLaVA-Bench": 58.3, "MMVet": 34.31},
+    "Marathi":   {"POPE": 79.17, "LLaVA-Bench": 52.8, "MMVet": 40.96},
+    "Gujarati":  {"POPE": 84.75, "LLaVA-Bench": 55.9, "MMVet": 39.03},
+    "Odia":      {"POPE": 82.03, "LLaVA-Bench": 62.8, "MMVet": 19.67},
+    "English":   {"POPE": 87.63, "LLaVA-Bench": 67.9, "MMVet": 30.49}
+  }
+}

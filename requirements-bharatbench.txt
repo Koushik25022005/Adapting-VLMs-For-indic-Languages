@@ -1,0 +1,13 @@
+# Environment for the official BharatBench evaluator scripts (Python 3.12).
+# They call the legacy openai.ChatCompletion API, hence openai 0.28.
+openai==0.28.1
+numpy
+pandas
+tqdm
+shortuuid
+scikit-learn
+langdetect
+# Only needed for the embedding-model POPE scorer (POPE_SCORER=muril|labse|...)
+torch
+transformers
+sentence-transformers

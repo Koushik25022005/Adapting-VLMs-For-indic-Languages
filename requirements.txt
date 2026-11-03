@@ -1,0 +1,15 @@
+# Training + inference environment (Python 3.12, CUDA GPU).
+torch>=2.4
+torchvision>=0.19
+transformers>=4.49,<5     # Qwen2.5-VL support
+peft>=0.13
+bitsandbytes>=0.44        # 4-bit NF4 (QLoRA); requires CUDA
+accelerate>=1.0
+datasets>=3.0
+huggingface_hub>=0.25
+qwen-vl-utils>=0.0.8
+pillow>=10
+requests
+pyyaml
+tqdm
+pytest

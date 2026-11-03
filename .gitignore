@@ -1,0 +1,11 @@
+.venv/
+.venv-bharatbench/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+data/
+outputs/
+third_party/
+results/*/bharatbench/
+results/responses/
