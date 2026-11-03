@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "indicvlm"
 version = "0.1.0"
 description = "QLoRA adaptation of Qwen2.5-VL-7B-Instruct on Chitrakshara-Cap, evaluated on BharatBench"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.13.5,<3.14"
 
 [tool.setuptools.packages.find]
 where = ["src"]

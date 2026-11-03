@@ -1,9 +1,9 @@
-# Training + inference environment (Python 3.12, CUDA GPU).
-torch>=2.4
-torchvision>=0.19
+# Training + inference environment (Python 3.13.5, CUDA GPU).
+torch>=2.6                # first releases with Python 3.13 wheels are 2.5/2.6
+torchvision>=0.21
 transformers>=4.49,<5     # Qwen2.5-VL support
 peft>=0.13
-bitsandbytes>=0.44        # 4-bit NF4 (QLoRA); requires CUDA
+bitsandbytes>=0.45        # 4-bit NF4 (QLoRA); requires CUDA
 accelerate>=1.0
 datasets>=3.0
 huggingface_hub>=0.25

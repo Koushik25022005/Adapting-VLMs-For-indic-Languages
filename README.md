@@ -12,7 +12,9 @@ Indic-LLaVA-Bench and Indic-MM-Vet), and compares it with **Chitrarth** in
 
 ## Requirements
 
-* **Python 3.12** (enforced by `scripts/setup_env.sh` and `pyproject.toml`)
+* **Python 3.13.5** (pinned in `.python-version` and `pyproject.toml`). `scripts/setup_env.sh` finds
+  it automatically, and installs it with `uv python install 3.13.5` if `uv` is available; otherwise
+  set `PYTHON=/path/to/python3.13`.
 * An NVIDIA GPU with CUDA. QLoRA (bitsandbytes 4-bit) does not run on CPU. Training needs
   ≥ 24 GB with the default config, and 40–80 GB is comfortable.
 * Access to the Hugging Face Hub (`Qwen/Qwen2.5-VL-7B-Instruct`, Chitrakshara-Cap, `lmms-lab/POPE`,

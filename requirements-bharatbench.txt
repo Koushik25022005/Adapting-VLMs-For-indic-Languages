@@ -1,4 +1,4 @@
-# Environment for the official BharatBench evaluator scripts (Python 3.12).
+# Environment for the official BharatBench evaluator scripts (Python 3.13.5).
 # They call the legacy openai.ChatCompletion API, hence openai 0.28.
 openai==0.28.1
 numpy

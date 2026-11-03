@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# Create the Python 3.12 training/inference environment in .venv
+# Create the Python 3.13.5 training/inference environment in .venv
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-PY=${PYTHON:-python3.12}
-"$PY" -c 'import sys; assert sys.version_info[:2] == (3, 12), sys.version' \
-  || { echo "Python 3.12 is required (set PYTHON=/path/to/python3.12)"; exit 1; }
+PY=$(bash "$ROOT/scripts/find_python.sh")
 "$PY" -m venv "$ROOT/.venv"
 "$ROOT/.venv/bin/pip" install -q --upgrade pip
 "$ROOT/.venv/bin/pip" install -q -r "$ROOT/requirements.txt"

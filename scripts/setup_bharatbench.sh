@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Clone the official BharatBench evaluators (pinned) and create their own Python 3.12 venv.
+# Clone the official BharatBench evaluators (pinned) and create their own Python 3.13.5 venv.
 # The evaluators use the legacy openai==0.28 SDK, so they get a separate environment
 # from the training/inference venv.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 BB_COMMIT=${BB_COMMIT:-de5aa6beaaf25687d53cbbb284fcccea29a626a8}
-PY=${PYTHON:-python3.12}
+PY=$(bash "$ROOT/scripts/find_python.sh")
 
 mkdir -p "$ROOT/third_party"
 if [[ ! -d "$ROOT/third_party/BharatBench" ]]; then
