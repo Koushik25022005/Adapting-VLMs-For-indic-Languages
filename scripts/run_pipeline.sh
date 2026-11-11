@@ -4,10 +4,16 @@
 #   export HF_TOKEN=...        # if Chitrakshara-Cap / Qwen are gated for your account
 #   export OPENAI_API_KEY=...  # BharatBench GPT judges
 #   bash scripts/run_pipeline.sh
+#   STREAMING=1 bash scripts/run_pipeline.sh   # stream Chitrakshara during training, no local copy
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
 PER_LANG=${PER_LANG:-5000}
-CONFIG=${CONFIG:-configs/qlora_qwen25vl_chitrakshara.yaml}
+STREAMING=${STREAMING:-0}
+if [[ "$STREAMING" == 1 ]]; then
+  CONFIG=${CONFIG:-configs/qlora_qwen25vl_chitrakshara_stream.yaml}
+else
+  CONFIG=${CONFIG:-configs/qlora_qwen25vl_chitrakshara.yaml}
+fi
 ADAPTER=${ADAPTER:-outputs/qwen25vl7b-chitrakshara-qlora/final_adapter}
 SKIP_BASE=${SKIP_BASE:-0}
 
@@ -16,7 +22,7 @@ SKIP_BASE=${SKIP_BASE:-0}
 PY=.venv/bin/python
 
 # 1) Data
-[[ -f data/chitrakshara_cap/train.jsonl ]] || \
+[[ "$STREAMING" == 1 || -f data/chitrakshara_cap/train.jsonl ]] || \
   $PY -m indicvlm.prepare_data --out data/chitrakshara_cap --per-language "$PER_LANG"
 [[ -d data/bharatbench_images ]] || $PY scripts/download_bharatbench_images.py --out data/bharatbench_images
 

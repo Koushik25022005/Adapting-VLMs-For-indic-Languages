@@ -99,8 +99,18 @@ def main(argv=None):
 
     set_seed(cfg.get("seed", 42))
     model, processor = build_model_and_processor(cfg)
-    train_ds = CaptionDataset(cfg["train_file"], cfg.get("max_train_samples"))
-    eval_ds = CaptionDataset(cfg["eval_file"], cfg.get("max_eval_samples")) if cfg.get("eval_file") else None
+    if cfg.get("streaming"):
+        # Stream Chitrakshara from the Hub (no local copy). A stream has no length, so the
+        # number of optimiser steps must be given explicitly.
+        from .streaming_data import from_config
+
+        if int(cfg.get("max_steps", -1)) <= 0:
+            raise SystemExit("streaming: true needs max_steps > 0 in the config")
+        train_ds = from_config(cfg)
+        eval_ds = from_config(cfg, eval_split=True)
+    else:
+        train_ds = CaptionDataset(cfg["train_file"], cfg.get("max_train_samples"))
+        eval_ds = CaptionDataset(cfg["eval_file"], cfg.get("max_eval_samples")) if cfg.get("eval_file") else None
     collator = QwenVLCaptionCollator(processor, cfg.get("max_caption_tokens", 256), cfg.get("seed", 42))
 
     use_bf16 = torch.cuda.is_bf16_supported()

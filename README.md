@@ -51,6 +51,27 @@ bash scripts/run_pipeline.sh
 The pipeline also scores the zero-shot base model (set `SKIP_BASE=1` to skip it). This lets the
 report separate the effect of the QLoRA adaptation from the base model's own Indic ability.
 
+### Streaming instead of a local copy
+
+`STREAMING=1 bash scripts/run_pipeline.sh` skips step 1 and trains with
+`configs/qlora_qwen25vl_chitrakshara_stream.yaml`. Rows are read from
+`krutrim-ai-labs/chitrakshara` (config `Chitrakshara-Cap`) during training
+(`indicvlm/streaming_data.py`):
+
+1. **Load and stream** with `load_dataset(..., streaming=True)`, through a shuffle buffer.
+2. **Format:** clean the caption and detect its language. The user turn is the image plus
+   "Describe this image in {language}.", and the assistant turn is the caption.
+3. **Images:** URLs are downloaded in parallel, and rows whose image fails are dropped.
+4. **Collate and mask:** apply the Qwen2.5-VL chat template. The loss is computed only on the
+   caption tokens; the prompt, image tokens and padding are set to -100.
+
+A stream has no length, so set `max_steps` (default 3000, i.e. about 48k samples at an
+effective batch of 16). `stream.max_per_language` caps each language, so Hindi doesn't
+dominate. `stream.holdout_fraction` (1%) of pairs, chosen by a content hash, is never trained on, and
+`stream.max_eval_samples` of them are collected once for evaluation. To preview the
+stream without a GPU:
+`python -m indicvlm.streaming_data --take 5`.
+
 ### Useful knobs
 
 * Config overrides: `python -m indicvlm.train --config ... max_steps=200 lora_r=32`

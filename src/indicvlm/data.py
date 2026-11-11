@@ -106,7 +106,8 @@ class QwenVLCaptionCollator:
         for ex in batch:
             msgs = build_messages(self._truncate(ex["caption"]), ex["language"], self.rng)
             texts.append(self.processor.apply_chat_template(msgs, tokenize=False, add_generation_prompt=False))
-            images.append(Image.open(ex["image"]).convert("RGB"))
+            img = ex["image"]  # file path (local manifest) or PIL image (streaming)
+            images.append(img.convert("RGB") if isinstance(img, Image.Image) else Image.open(img).convert("RGB"))
         enc = self.processor(text=texts, images=images, padding=True, return_tensors="pt")
         labels = [mask_labels(ids.tolist(), self.assistant_header, self.end_token)
                   for ids in enc["input_ids"]]
