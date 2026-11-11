@@ -37,9 +37,16 @@ on Indic data?*
 
 ### 2.2 Training data: Chitrakshara-Cap
 
-We stream Chitrakshara-Cap and keep up to *N* valid image–caption pairs per language (Hindi,
-Bengali, Telugu, Tamil, Marathi, Gujarati, Kannada, Malayalam, Odia, Assamese, English). We drop
-captions shorter than 5 or longer than 1000 characters and images whose shorter side is under 64 px.
+Chitrakshara rows are interleaved web documents: aligned lists of images (URLs) and text
+paragraphs, plus per-image metadata. We stream the corpus and turn every image into an
+image–caption pair. The caption is the paragraph just before the image, else the one just after it,
+else its alt text. Captions are clipped at a sentence end to at most 500 characters. We drop
+captions with fewer than 3 words or 5 characters, images that fail to download, and images whose
+shorter side is under 64 px. The rows carry no language label, so we assign the language from the
+caption's Unicode script. Hindi and Marathi (both Devanagari) are separated by frequent
+function words and the Marathi letter ळ, and Assamese and Bengali by ৰ/ৱ versus র. Pairs whose
+language cannot be decided are discarded. We keep up to *N* pairs per language (Hindi, Bengali,
+Telugu, Tamil, Marathi, Gujarati, Kannada, Malayalam, Odia, Assamese, English).
 Each pair becomes a single-turn chat sample: the user turn holds the image and an instruction such
 as *"Describe this image in {language}."*, and the assistant turn holds the caption. The loss is
 computed on the assistant tokens only. The real per-language counts are recorded in

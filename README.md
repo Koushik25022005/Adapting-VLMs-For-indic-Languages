@@ -60,8 +60,17 @@ report separate the effect of the QLoRA adaptation from the base model's own Ind
 * `JUDGE_MODEL=gpt-4o ...` replaces the GPT judge (BharatBench default `gpt-4-0613`) if that model
   is no longer served. Record this in the report, because the scores are then not strictly
   comparable with Chitrarth's.
-* If Chitrakshara-Cap uses different column names, run `prepare_data` with `--image-column`,
-  `--caption-column` and `--language-column` (or `--config <subset>`).
+* Chitrakshara rows are interleaved web documents (`images` / `texts` lists plus a `metadata`
+  JSON string). `prepare_data` pairs each image with the text just before it, else the text just
+  after it, else its alt text (`--caption-source before,after,alt`). It clips captions at a
+  sentence end (`--max-caption-chars 500`) and downloads images in parallel (`--workers 32`).
+  Plain one-image-one-caption datasets work too (`--format pairs`).
+* The rows have no language label, so the language is detected from the caption's script.
+  Hindi and Marathi are separated by common words, and Assamese and Bengali by the letters
+  ৰ/ৱ vs র. Captions it can't place, such as Punjabi, are skipped. If you load a subset known
+  to be one language, pass `--assume-language Hindi` (or a `--language-column`) instead.
+  `stats.json` records how many images failed to download and how many captions had an
+  unknown language.
 
 ## Layout
 
