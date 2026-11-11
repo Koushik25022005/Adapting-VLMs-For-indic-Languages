@@ -40,7 +40,9 @@ import os
 import random
 import re
 from collections import Counter, defaultdict
-from concurrent.futures import ThreadPoolExecutor
+import threading
+import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
 from .languages import LANGUAGES, canonical_language, detect_language
@@ -160,40 +162,136 @@ def pair_rows(row: dict, img_col: str, cap_col: str, min_chars=5, max_chars=500,
 
 
 # --------------------------------------------------------------------------- images
-def load_image(value, timeout: float = 10.0):
+class SlowDownload(Exception):
+    """Raised when a download exceeds its total time budget or size cap."""
+
+
+_thread_local = threading.local()
+USER_AGENT = "Mozilla/5.0 (indicvlm-data-prep)"
+
+
+def _session():
+    """One keep-alive HTTP session per worker thread (no automatic retries)."""
+    s = getattr(_thread_local, "session", None)
+    if s is None:
+        import requests
+        from requests.adapters import HTTPAdapter
+
+        s = requests.Session()
+        adapter = HTTPAdapter(pool_connections=8, pool_maxsize=8, max_retries=0)
+        s.mount("http://", adapter)
+        s.mount("https://", adapter)
+        s.headers["User-Agent"] = USER_AGENT
+        _thread_local.session = s
+    return s
+
+
+def http_get(url: str, timeout: float = 5.0, deadline: float = 15.0, max_bytes: int = 20_000_000) -> bytes:
+    """Download ``url`` with a connect/read ``timeout`` AND a hard total ``deadline``.
+
+    ``requests``' own timeout only bounds each socket operation, so a server that trickles
+    bytes can otherwise hold a worker for minutes. Here the body is read in chunks and the
+    download is abandoned once ``deadline`` seconds have passed or ``max_bytes`` is exceeded.
+    """
+    t0 = time.monotonic()
+    with _session().get(url, timeout=(timeout, timeout), stream=True) as r:
+        r.raise_for_status()
+        if r.headers.get("Content-Type", "").startswith("text/"):
+            raise ValueError("not an image")
+        buf = bytearray()
+        # read1() returns whatever bytes have arrived (one socket read), so the deadline is
+        # checked even when a server drips data; iter_content() would block until a full
+        # chunk or the end of the body arrives.
+        read = getattr(r.raw, "read1", None)
+        chunks = (iter(lambda: read(65536, decode_content=True), b"") if read
+                  else r.iter_content(chunk_size=65536))
+        for chunk in chunks:
+            buf += chunk
+            if len(buf) > max_bytes:
+                raise SlowDownload("too large")
+            if time.monotonic() - t0 > deadline:
+                raise SlowDownload("deadline exceeded")
+    return bytes(buf)
+
+
+def to_rgb(img):
+    """Convert any PIL mode to RGB; transparent pixels become white (not black)."""
+    from PIL import Image
+
+    if img.mode == "P" and "transparency" in img.info:
+        img = img.convert("RGBA")  # avoids PIL's palette-transparency warning
+    if img.mode in ("RGBA", "LA", "PA"):
+        bg = Image.new("RGB", img.size, (255, 255, 255))
+        bg.paste(img, mask=img.convert("RGBA").getchannel("A"))
+        return bg
+    return img.convert("RGB")
+
+
+def _open(data: bytes):
+    from PIL import Image
+
+    img = Image.open(io.BytesIO(data))
+    img.load()
+    return to_rgb(img)
+
+
+def load_image(value, timeout: float = 5.0, deadline: float = 15.0):
     """Return a PIL RGB image from a PIL image, HF image dict, bytes, local path or URL."""
     from PIL import Image
 
     if value is None:
         return None
     if isinstance(value, Image.Image):
-        return value.convert("RGB")
+        return to_rgb(value)
     if isinstance(value, dict):  # HF Image feature in non-decoded form
         if value.get("bytes"):
-            return Image.open(io.BytesIO(value["bytes"])).convert("RGB")
+            return _open(value["bytes"])
         value = value.get("path")
     if isinstance(value, (bytes, bytearray)):
-        return Image.open(io.BytesIO(value)).convert("RGB")
+        return _open(bytes(value))
     if isinstance(value, str):
         if value.startswith(("http://", "https://")):
-            import requests
-
-            r = requests.get(value, timeout=timeout, headers={"User-Agent": "Mozilla/5.0 (indicvlm-data-prep)"})
-            r.raise_for_status()
-            return Image.open(io.BytesIO(r.content)).convert("RGB")
+            return _open(http_get(value, timeout, deadline))
         if os.path.exists(value):
-            return Image.open(value).convert("RGB")
+            with open(value, "rb") as f:
+                return _open(f.read())
     return None
 
 
-def _fetch(value, timeout, min_side):
+def _failure_reason(exc: Exception) -> str:
+    name = type(exc).__name__
+    if isinstance(exc, SlowDownload):
+        return "slow"
+    if "Timeout" in name:
+        return "timeout"
+    if name in ("HTTPError",):
+        return "http_error"
+    if "Connection" in name or "SSL" in name or name in ("InvalidURL", "MissingSchema", "TooManyRedirects"):
+        return "connection"
+    if name in ("UnidentifiedImageError", "DecompressionBombError", "OSError", "SyntaxError", "ValueError"):
+        return "not_image"
+    return "other"
+
+
+def fetch_image(value, timeout: float = 5.0, min_side: int = 64, deadline: float = 15.0,
+                max_side: int | None = 1024):
+    """Return ``(image, None)`` or ``(None, reason)``. Large images are downscaled to ``max_side``
+    (Qwen2.5-VL resizes to <= max_pixels anyway), which saves disk space and encode time."""
     try:
-        img = load_image(value, timeout)
-    except Exception:
-        return None
-    if img is None or min(img.size) < min_side:
-        return None
-    return img
+        img = load_image(value, timeout, deadline=deadline)
+    except Exception as e:  # noqa: BLE001 - every failure just means "skip this image"
+        return None, _failure_reason(e)
+    if img is None:
+        return None, "missing"
+    if min(img.size) < min_side:
+        return None, "too_small"
+    if max_side and max(img.size) > max_side:
+        img.thumbnail((max_side, max_side))
+    return img, None
+
+
+def _fetch(value, timeout, min_side, deadline: float = 15.0):
+    return fetch_image(value, timeout, min_side, deadline)[0]
 
 
 # --------------------------------------------------------------------------- main
@@ -217,8 +315,10 @@ def main(argv=None):
     p.add_argument("--max-caption-chars", type=int, default=500)
     p.add_argument("--min-caption-words", type=int, default=3)
     p.add_argument("--min-image-side", type=int, default=64)
-    p.add_argument("--workers", type=int, default=32, help="parallel image downloads")
-    p.add_argument("--timeout", type=float, default=10.0)
+    p.add_argument("--workers", type=int, default=64, help="parallel image downloads")
+    p.add_argument("--timeout", type=float, default=5.0, help="connect/read timeout per socket operation (s)")
+    p.add_argument("--deadline", type=float, default=15.0, help="hard limit on total time per image (s)")
+    p.add_argument("--max-side", type=int, default=1024, help="downscale saved images to this longest side")
     p.add_argument("--max-scan", type=int, default=5_000_000, help="stop after scanning this many rows")
     p.add_argument("--seed", type=int, default=42)
     args = p.parse_args(argv)
@@ -259,33 +359,60 @@ def main(argv=None):
 
     counts: dict[str, int] = defaultdict(int)
     stats = Counter()
-    records, seen_urls, batch = [], set(), []
+    records, seen_urls = [], set()
     bar = tqdm(total=args.per_language * len(wanted), desc="kept")
 
-    def flush(executor):
-        imgs = executor.map(lambda c: _fetch(c["image"], args.timeout, args.min_image_side), batch)
-        for cand, img in zip(batch, imgs):
-            lang = cand["language"]
-            if img is None:
-                stats["image_failed"] += 1
-                continue
-            if counts[lang] >= args.per_language:
-                continue
-            rel = Path("images") / LANGUAGES[lang]["codes"][0] / f"{counts[lang]:07d}.jpg"
-            (out / rel).parent.mkdir(parents=True, exist_ok=True)
-            img.save(out / rel, format="JPEG", quality=92)
-            records.append({"image": str(rel), "caption": cand["caption"], "language": lang,
-                            "caption_source": cand["source"]})
-            counts[lang] += 1
-            stats["kept_from_" + cand["source"]] += 1
-            bar.update(1)
-        batch.clear()
+    # Downloads run continuously: up to `max_inflight` are in flight at any time and each
+    # result is handled as soon as it finishes, so one slow site never stalls the others
+    # (the old version waited for a whole batch, i.e. for its slowest URL).
+    ex = ThreadPoolExecutor(max_workers=args.workers)
+    inflight: dict = {}  # future -> candidate
+    pending: Counter = Counter()  # in-flight downloads per language
+    max_inflight = args.workers * 2
+    last_postfix = 0.0
+
+    def job(value):
+        return fetch_image(value, args.timeout, args.min_image_side, args.deadline, args.max_side)
+
+    def handle(fut):
+        cand = inflight.pop(fut)
+        lang = cand["language"]
+        pending[lang] -= 1
+        img, reason = fut.result()
+        if img is None:
+            stats["image_failed"] += 1
+            stats["failed_" + reason] += 1
+            return
+        if counts[lang] >= args.per_language:
+            stats["surplus_downloads"] += 1
+            return
+        rel = Path("images") / LANGUAGES[lang]["codes"][0] / f"{counts[lang]:07d}.jpg"
+        (out / rel).parent.mkdir(parents=True, exist_ok=True)
+        img.save(out / rel, format="JPEG", quality=90)
+        records.append({"image": str(rel), "caption": cand["caption"], "language": lang,
+                        "caption_source": cand["source"]})
+        counts[lang] += 1
+        stats["kept_from_" + cand["source"]] += 1
+        bar.update(1)
+
+    def harvest(block: bool):
+        nonlocal last_postfix
+        if inflight:
+            done, _ = wait(list(inflight), timeout=None if block else 0, return_when=FIRST_COMPLETED)
+            for f in done:
+                handle(f)
+        now = time.monotonic()
+        if now - last_postfix > 2:
+            last_postfix = now
+            tried = stats["image_failed"] + sum(counts.values())
+            bar.set_postfix(rows=stats["rows_scanned"], inflight=len(inflight),
+                            fail=f"{stats['image_failed'] / max(tried, 1):.0%}",
+                            lang_skip=stats["language_unknown"] + stats["language_not_wanted"], refresh=False)
 
     def full():
         return all(counts[l] >= args.per_language for l in wanted)
 
-    with ThreadPoolExecutor(max_workers=args.workers) as ex:
-        in_batch: Counter = Counter()
+    try:
         for i, row in enumerate(ds):
             if i >= args.max_scan or full():
                 break
@@ -300,8 +427,8 @@ def main(argv=None):
                     stats["language_not_wanted"] += 1
                     continue
                 need = args.per_language - counts[lang]
-                # over-fetch 2x to absorb dead links, but don't flood the batch with one language
-                if need <= 0 or in_batch[lang] >= max(2 * need, 1):
+                # over-fetch up to 2x what is still needed, to absorb dead links
+                if need <= 0 or pending[lang] >= max(2 * need, 1):
                     continue
                 key = cand["image"] if isinstance(cand["image"], str) else None
                 if key is not None:
@@ -310,13 +437,16 @@ def main(argv=None):
                         continue
                     seen_urls.add(key)
                 cand["language"] = lang
-                batch.append(cand)
-                in_batch[lang] += 1
-            if len(batch) >= args.workers * 4:
-                flush(ex)
-                in_batch.clear()
-        if batch:
-            flush(ex)
+                inflight[ex.submit(job, cand["image"])] = cand
+                pending[lang] += 1
+                while len(inflight) >= max_inflight:
+                    harvest(block=True)
+            harvest(block=False)
+        while inflight and not full():
+            harvest(block=True)
+    finally:
+        # don't wait for stragglers once every quota is met
+        ex.shutdown(wait=False, cancel_futures=True)
     bar.close()
 
     random.shuffle(records)

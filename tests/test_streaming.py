@@ -27,7 +27,7 @@ def _rows():
 @pytest.fixture
 def fake_hub(monkeypatch):
     monkeypatch.setattr(pdm, "load_image",
-                        lambda v, timeout=10: None if "dead" in str(v) else Image.new("RGB", (128, 96)))
+                        lambda v, timeout=10, **k: None if "dead" in str(v) else Image.new("RGB", (128, 96)))
     monkeypatch.setattr(datasets, "get_dataset_config_names", lambda n: ["Chitrakshara-Cap", "Chitrakshara-IL"],
                         raising=False)
     calls = {}

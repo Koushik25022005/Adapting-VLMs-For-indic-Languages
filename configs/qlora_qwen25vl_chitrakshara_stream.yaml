@@ -19,8 +19,10 @@ stream:
   max_eval_samples: 300             # held-out pairs collected once at start for evaluation
   max_caption_chars: 500
   min_image_side: 64
-  download_workers: 32
-  timeout: 10
+  download_workers: 64
+  download_batch: 128
+  timeout: 5                        # per socket operation (s)
+  deadline: 15                      # hard limit per image (s)
 max_caption_tokens: 256
 min_pixels: 200704                 # 256 * 28 * 28
 max_pixels: 401408                 # 512 * 28 * 28 -> <= 512 visual tokens per image

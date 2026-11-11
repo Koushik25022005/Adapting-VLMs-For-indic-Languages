@@ -10,6 +10,7 @@ huggingface_hub>=0.25
 qwen-vl-utils>=0.0.8
 pillow>=10
 requests
+urllib3>=2.0              # read1(): lets the image downloader enforce a hard deadline
 pyyaml
 tqdm
 pytest

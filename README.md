@@ -85,7 +85,12 @@ stream without a GPU:
 * Chitrakshara rows are interleaved web documents (`images` / `texts` lists plus a `metadata`
   JSON string). `prepare_data` pairs each image with the text just before it, else the text just
   after it, else its alt text (`--caption-source before,after,alt`). It clips captions at a
-  sentence end (`--max-caption-chars 500`) and downloads images in parallel (`--workers 32`).
+  sentence end (`--max-caption-chars 500`) and downloads images in parallel. Downloads run continuously
+  (`--workers 64`), each with a hard total time limit (`--deadline 15` s, plus `--timeout 5` s
+  per socket operation), so slow or dead sites never hold up the rest. Saved images are
+  downscaled to `--max-side 1024`. The progress bar shows rows scanned, downloads in flight,
+  the image failure rate (`fail`) and captions skipped for language (`lang_skip`); `stats.json`
+  breaks failures down by reason (`failed_http_error`, `failed_timeout`, `failed_slow` ...).
   Plain one-image-one-caption datasets work too (`--format pairs`).
 * The rows have no language label, so the language is detected from the caption's script.
   Hindi and Marathi are separated by common words, and Assamese and Bengali by the letters

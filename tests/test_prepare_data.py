@@ -82,7 +82,7 @@ def _run(tmp_path, monkeypatch, rows, extra=()):
     monkeypatch.setattr(datasets, "load_dataset", lambda *a, **k: rows)
     monkeypatch.setattr(datasets, "get_dataset_config_names", lambda name: ["Chitrakshara-Cap", "Chitrakshara-IL"])
     monkeypatch.setattr(pdm, "load_image",
-                        lambda v, timeout=10: None if "dead" in str(v) else Image.new("RGB", (128, 96)))
+                        lambda v, timeout=10, **k: None if "dead" in str(v) else Image.new("RGB", (128, 96)))
     out = tmp_path / "out"
     pdm.main(["--out", str(out), "--per-language", "2", "--workers", "2", "--val-fraction", "0.2", *extra])
     rows_out = [json.loads(l) for f in ("train.jsonl", "val.jsonl") for l in (out / f).read_text().splitlines()]
@@ -148,7 +148,7 @@ def test_defaults_point_at_chitrakshara_cap(tmp_path, monkeypatch):
     monkeypatch.setattr(datasets, "load_dataset", fake_load)
     monkeypatch.setattr(datasets, "get_dataset_config_names", lambda name: ["Chitrakshara-Cap", "Chitrakshara-IL"])
     from PIL import Image
-    monkeypatch.setattr(pdm, "load_image", lambda v, timeout=10: Image.new("RGB", (128, 96)))
+    monkeypatch.setattr(pdm, "load_image", lambda v, timeout=10, **k: Image.new("RGB", (128, 96)))
     pdm.main(["--out", str(tmp_path / "o"), "--per-language", "1", "--languages", "Tamil"])
     assert seen == {"name": "krutrim-ai-labs/chitrakshara", "config": "Chitrakshara-Cap"}
 

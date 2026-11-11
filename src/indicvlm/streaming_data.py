@@ -89,10 +89,11 @@ class _PerLanguageCap:
         return True
 
 
-def _download(batch: dict, workers: int, timeout: float, min_side: int) -> dict:
-    """Batched map: fetch images in parallel, drop rows whose image fails."""
+def _download(batch: dict, workers: int, timeout: float, min_side: int, deadline: float = 15.0) -> dict:
+    """Batched map: fetch images in parallel, drop rows whose image fails. Each download has a
+    hard ``deadline``, so a batch never waits longer than that for its slowest URL."""
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        imgs = list(ex.map(lambda v: _fetch(v, timeout, min_side), batch["image"]))
+        imgs = list(ex.map(lambda v: _fetch(v, timeout, min_side, deadline), batch["image"]))
     keep = [i for i, im in enumerate(imgs) if im is not None]
     return {"image": [imgs[i] for i in keep],
             "caption": [batch["caption"][i] for i in keep],
@@ -107,7 +108,7 @@ def stream_chitrakshara(dataset: str = "krutrim-ai-labs/chitrakshara", config: s
                         fmt: str = "auto", caption_source=("before", "after", "alt"),
                         min_caption_chars: int = 5, max_caption_chars: int = 500, min_caption_words: int = 3,
                         min_image_side: int = 64, download_workers: int = 32, download_batch: int = 64,
-                        timeout: float = 10.0, load_dataset_fn=None):
+                        timeout: float = 5.0, deadline: float = 15.0, load_dataset_fn=None):
     """Return a ``datasets.IterableDataset`` yielding {"image": PIL.Image, "caption", "language"}.
 
     With ``holdout_fraction`` > 0, pairs are split by a content hash: ``part="train"`` yields
@@ -146,7 +147,8 @@ def stream_chitrakshara(dataset: str = "krutrim-ai-labs/chitrakshara", config: s
     ds = ds.filter(_PerLanguageCap(max_per_language))
     # 3. Images: parallel download, failed rows dropped
     ds = ds.map(_download, batched=True, batch_size=download_batch,
-                fn_kwargs=dict(workers=download_workers, timeout=timeout, min_side=min_image_side))
+                fn_kwargs=dict(workers=download_workers, timeout=timeout, min_side=min_image_side,
+                               deadline=deadline))
     return ds
 
 
@@ -159,7 +161,8 @@ def from_config(cfg: dict, eval_split: bool = False):
               seed=cfg.get("seed", 42), image_column=s.get("image_column"),
               caption_column=s.get("caption_column"), max_caption_chars=s.get("max_caption_chars", 500),
               min_image_side=s.get("min_image_side", 64), download_workers=s.get("download_workers", 32),
-              timeout=s.get("timeout", 10.0))
+              timeout=s.get("timeout", 5.0), deadline=s.get("deadline", 15.0),
+              download_batch=s.get("download_batch", 64))
     frac = float(s.get("holdout_fraction", 0.0))
     if eval_split:
         # Collected once into memory (a fixed list), so every evaluation sees the same
