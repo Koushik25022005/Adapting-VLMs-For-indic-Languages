@@ -69,7 +69,7 @@ report separate the effect of the QLoRA adaptation from the base model's own Ind
 * The rows have no language label, so the language is detected from the caption's script.
   Hindi and Marathi are separated by common words, and Assamese and Bengali by the letters
   ৰ/ৱ vs র. Captions it can't place, such as Punjabi, are skipped. If you load a subset known
-  to be one language, pass `--assume-language Hindi` (or a `--language-column`) instead.
+  to be one language, pass `--assume-language Hindi` instead.
   `stats.json` records how many images failed to download and how many captions had an
   unknown language.
 

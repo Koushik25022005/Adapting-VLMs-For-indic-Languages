@@ -14,9 +14,8 @@ Two row layouts are supported (auto-detected, or force with ``--format``):
 
 * **pairs**: one image (PIL / bytes / path / URL) and one caption per row.
 
-The datasets carry no language label, so unless a language column exists or
-``--assume-language`` is given, the language is detected from the caption's Unicode
-script (see ``indicvlm.languages.detect_language``). Images are downloaded in parallel.
+The datasets carry no language label, so (unless ``--assume-language`` is given) the
+language is detected from the caption's Unicode script (see ``indicvlm.languages.detect_language``). Images are downloaded in parallel.
 
 Output (``--out``)::
 
@@ -46,9 +45,8 @@ from pathlib import Path
 
 from .languages import LANGUAGES, canonical_language, detect_language
 
-IMAGE_COLS = ["image", "img", "image_url", "url", "URL", "image_path", "img_url"]
-CAPTION_COLS = ["caption", "text", "TEXT", "description", "alt_text", "captions"]
-LANG_COLS = ["language", "lang", "lang_code", "language_code", "LANGUAGE"]
+IMAGE_COLS = ["image", "images", "img", "image_url", "url", "URL", "image_path", "img_url"]
+CAPTION_COLS = ["caption", "text", "texts", "TEXT", "description", "alt_text", "captions"]
 _SENT_END = re.compile(r"[।॥.!?|]")
 
 
@@ -155,6 +153,8 @@ def pair_rows(row: dict, img_col: str, cap_col: str, min_chars=5, max_chars=500,
         cap = next((c for c in cap if c), None)
     cap = clean_caption(cap, min_chars, max_chars, min_words)
     img = row.get(img_col)
+    if isinstance(img, list):  # e.g. an "images" column holding a one-element list
+        img = next((i for i in img if i is not None), None)
     if cap and img is not None:
         yield {"image": img, "caption": cap, "source": "pair"}
 
@@ -213,7 +213,6 @@ def main(argv=None):
                    help="interleaved rows: order in which to take the caption (before/after/alt)")
     p.add_argument("--image-column", default=None)
     p.add_argument("--caption-column", default=None)
-    p.add_argument("--language-column", default=None)
     p.add_argument("--assume-language", default=None,
                    help="label every sample with this language instead of detecting it")
     p.add_argument("--min-caption-chars", type=int, default=5)
@@ -252,8 +251,7 @@ def main(argv=None):
         cap_col = pick_column(cols, CAPTION_COLS, args.caption_column)
         if img_col is None or cap_col is None:
             raise SystemExit("Could not detect image/caption columns; pass --image-column/--caption-column.")
-    lang_col = pick_column(cols, LANG_COLS, args.language_column)
-    lang_mode = ("assumed: " + assumed) if assumed else (f"column '{lang_col}'" if lang_col else "script detection")
+    lang_mode = ("assumed: " + assumed) if assumed else "script detection"
     print(f"Columns: {cols}\n -> format={fmt}"
           + (f" image={img_col} caption={cap_col}" if fmt == "pairs" else f" caption sources={sources}")
           + f" | language from {lang_mode}")
@@ -266,12 +264,8 @@ def main(argv=None):
             yield from pair_rows(row, img_col, cap_col, args.min_caption_chars, args.max_caption_chars,
                                  args.min_caption_words)
 
-    def language_of(row, cap):
-        if assumed:
-            return assumed
-        if lang_col:
-            return canonical_language(row.get(lang_col))
-        return detect_language(cap)
+    def language_of(cap):
+        return assumed or detect_language(cap)
 
     counts: dict[str, int] = defaultdict(int)
     stats = Counter()
@@ -308,7 +302,7 @@ def main(argv=None):
             stats["rows_scanned"] += 1
             for cand in candidates(row):
                 stats["candidates"] += 1
-                lang = language_of(row, cand["caption"])
+                lang = language_of(cand["caption"])
                 if lang is None:
                     stats["language_unknown"] += 1
                     continue

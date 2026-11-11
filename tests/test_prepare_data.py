@@ -148,3 +148,13 @@ def test_defaults_point_at_chitrakshara_cap(tmp_path, monkeypatch):
     monkeypatch.setattr(pdm, "load_image", lambda v, timeout=10: Image.new("RGB", (128, 96)))
     pdm.main(["--out", str(tmp_path / "o"), "--per-language", "1", "--languages", "Tamil"])
     assert seen == {"name": "krutrim-ai-labs/chitrakshara", "config": "Chitrakshara-Cap"}
+
+
+def test_main_images_and_text_columns(tmp_path, monkeypatch):
+    """Chitrakshara-Cap rows: an "images" column (URL or one-element list) and a "text" caption."""
+    rows = [{"images": "https://x/a.jpg", "text": SAMPLES["Telugu"]},
+            {"images": [None, "https://x/b.jpg"], "text": SAMPLES["Bengali"]},
+            {"images": None, "text": SAMPLES["Tamil"]}]  # no image -> skipped
+    _, recs, stats = _run(tmp_path, monkeypatch, rows, ["--languages", "Telugu", "Bengali", "Tamil"])
+    assert stats["format"] == "pairs" and stats["language_from"] == "script detection"
+    assert sorted(r["language"] for r in recs) == ["Bengali", "Telugu"]
