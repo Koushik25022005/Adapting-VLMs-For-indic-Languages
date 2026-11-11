@@ -107,17 +107,20 @@ def test_main_interleaved_end_to_end(tmp_path, monkeypatch):
         by_lang[r["language"]] = by_lang.get(r["language"], 0) + 1
         assert (out / r["image"]).exists()
     assert by_lang == {"Hindi": 2, "Tamil": 1, "Marathi": 1}
-    assert stats["format"] == "interleaved" and stats["language_from"] == "script detection"
+    assert stats["format"] == "interleaved"
     assert stats["counters"]["image_failed"] == 1
     assert stats["counters"]["duplicate_url"] == 1
     assert stats["counters"]["language_unknown"] == 1
 
 
-def test_main_pairs_with_assumed_language(tmp_path, monkeypatch):
+def test_main_pairs_image_text_columns(tmp_path, monkeypatch, capsys):
     rows = [{"text": SAMPLES["Hindi"], "image": "https://x/a.jpg"},
             {"text": "ab", "image": "https://x/b.jpg"},  # too short
-            {"text": SAMPLES["Hindi"], "image": "https://x/c.jpg"}]
-    _, recs, stats = _run(tmp_path, monkeypatch, rows, ["--languages", "Hindi", "--assume-language", "hi"])
+            {"text": SAMPLES["Hindi"] + " फिर", "image": "https://x/c.jpg"}]
+    _, recs, stats = _run(tmp_path, monkeypatch, rows, ["--languages", "Hindi"])
+    first_lines = capsys.readouterr().out.splitlines()[:2]
+    assert first_lines[1].strip() == "-> format=pairs image=image caption=text"
+    assert "language" not in " ".join(first_lines)
     assert stats["format"] == "pairs" and len(recs) == 2
     assert {r["language"] for r in recs} == {"Hindi"}
 
@@ -156,5 +159,5 @@ def test_main_images_and_text_columns(tmp_path, monkeypatch):
             {"images": [None, "https://x/b.jpg"], "text": SAMPLES["Bengali"]},
             {"images": None, "text": SAMPLES["Tamil"]}]  # no image -> skipped
     _, recs, stats = _run(tmp_path, monkeypatch, rows, ["--languages", "Telugu", "Bengali", "Tamil"])
-    assert stats["format"] == "pairs" and stats["language_from"] == "script detection"
+    assert stats["format"] == "pairs"
     assert sorted(r["language"] for r in recs) == ["Bengali", "Telugu"]

@@ -14,8 +14,8 @@ Two row layouts are supported (auto-detected, or force with ``--format``):
 
 * **pairs**: one image (PIL / bytes / path / URL) and one caption per row.
 
-The datasets carry no language label, so (unless ``--assume-language`` is given) the
-language is detected from the caption's Unicode script (see ``indicvlm.languages.detect_language``). Images are downloaded in parallel.
+The datasets carry no language label, so the language of every pair is detected from
+the caption's Unicode script (see ``indicvlm.languages.detect_language``). Images are downloaded in parallel.
 
 Output (``--out``)::
 
@@ -213,8 +213,6 @@ def main(argv=None):
                    help="interleaved rows: order in which to take the caption (before/after/alt)")
     p.add_argument("--image-column", default=None)
     p.add_argument("--caption-column", default=None)
-    p.add_argument("--assume-language", default=None,
-                   help="label every sample with this language instead of detecting it")
     p.add_argument("--min-caption-chars", type=int, default=5)
     p.add_argument("--max-caption-chars", type=int, default=500)
     p.add_argument("--min-caption-words", type=int, default=3)
@@ -231,9 +229,6 @@ def main(argv=None):
     random.seed(args.seed)
     wanted = {canonical_language(l) for l in args.languages}
     wanted.discard(None)
-    assumed = canonical_language(args.assume_language) if args.assume_language else None
-    if args.assume_language and assumed is None:
-        raise SystemExit(f"Unknown --assume-language {args.assume_language!r}")
     sources = [s.strip() for s in args.caption_source.split(",") if s.strip()]
     out = Path(args.out)
     (out / "images").mkdir(parents=True, exist_ok=True)
@@ -251,10 +246,8 @@ def main(argv=None):
         cap_col = pick_column(cols, CAPTION_COLS, args.caption_column)
         if img_col is None or cap_col is None:
             raise SystemExit("Could not detect image/caption columns; pass --image-column/--caption-column.")
-    lang_mode = ("assumed: " + assumed) if assumed else "script detection"
     print(f"Columns: {cols}\n -> format={fmt}"
-          + (f" image={img_col} caption={cap_col}" if fmt == "pairs" else f" caption sources={sources}")
-          + f" | language from {lang_mode}")
+          + (f" image={img_col} caption={cap_col}" if fmt == "pairs" else f" caption sources={sources}"))
 
     def candidates(row):
         if fmt == "interleaved":
@@ -263,9 +256,6 @@ def main(argv=None):
         else:
             yield from pair_rows(row, img_col, cap_col, args.min_caption_chars, args.max_caption_chars,
                                  args.min_caption_words)
-
-    def language_of(cap):
-        return assumed or detect_language(cap)
 
     counts: dict[str, int] = defaultdict(int)
     stats = Counter()
@@ -302,7 +292,7 @@ def main(argv=None):
             stats["rows_scanned"] += 1
             for cand in candidates(row):
                 stats["candidates"] += 1
-                lang = language_of(cand["caption"])
+                lang = detect_language(cand["caption"])
                 if lang is None:
                     stats["language_unknown"] += 1
                     continue
@@ -336,7 +326,7 @@ def main(argv=None):
             for r in part:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
     summary = {"dataset": args.dataset, "config": args.config, "split": args.split, "format": fmt,
-               "language_from": lang_mode, "per_language": dict(counts),
+               "per_language": dict(counts),
                "train": len(records) - n_val, "val": n_val, "counters": dict(stats)}
     (out / "stats.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False))
     print(json.dumps(summary, indent=2, ensure_ascii=False))
