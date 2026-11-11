@@ -24,9 +24,12 @@ Output (``--out``)::
     train.jsonl / val.jsonl   {"image": "images/hi/0000000.jpg", "caption": "...", "language": "Hindi"}
     stats.json
 
+The Hub dataset is ``krutrim-ai-labs/chitrakshara`` with two configs: ``Chitrakshara-Cap``
+(image-caption pairs, the default here) and ``Chitrakshara-IL`` (interleaved documents).
+Config names are matched case-insensitively.
+
 Example:
-    python -m indicvlm.prepare_data --dataset krutrim-ai-labs/Chitrakshara-Cap \
-        --out data/chitrakshara_cap --per-language 5000
+    python -m indicvlm.prepare_data --out data/chitrakshara_cap --per-language 5000
 """
 
 from __future__ import annotations
@@ -47,6 +50,22 @@ IMAGE_COLS = ["image", "img", "image_url", "url", "URL", "image_path", "img_url"
 CAPTION_COLS = ["caption", "text", "TEXT", "description", "alt_text", "captions"]
 LANG_COLS = ["language", "lang", "lang_code", "language_code", "LANGUAGE"]
 _SENT_END = re.compile(r"[।॥.!?|]")
+
+
+def resolve_config(dataset: str, config: str | None, lister=None) -> str | None:
+    """Return the dataset's config name matching ``config`` case-insensitively (as given if unknown)."""
+    if not config:
+        return config
+    try:
+        if lister is None:
+            from datasets import get_dataset_config_names as lister
+        names = list(lister(dataset))
+    except Exception:
+        return config
+    for n in names:
+        if n.lower() == config.lower():
+            return n
+    raise SystemExit(f"Config {config!r} not found in {dataset}; available: {names}")
 
 
 def pick_column(columns, candidates, override=None):
@@ -180,8 +199,9 @@ def _fetch(value, timeout, min_side):
 # --------------------------------------------------------------------------- main
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--dataset", default="krutrim-ai-labs/Chitrakshara-Cap")
-    p.add_argument("--config", default=None, help="HF dataset config/subset name, if any")
+    p.add_argument("--dataset", default="krutrim-ai-labs/chitrakshara")
+    p.add_argument("--config", default="Chitrakshara-Cap",
+                   help="HF config: Chitrakshara-Cap (pairs) or Chitrakshara-IL (interleaved); case-insensitive")
     p.add_argument("--split", default="train")
     p.add_argument("--data-dir", default=None, help="HF data_dir (e.g. a per-language folder)")
     p.add_argument("--out", default="data/chitrakshara_cap")
@@ -219,6 +239,7 @@ def main(argv=None):
     out = Path(args.out)
     (out / "images").mkdir(parents=True, exist_ok=True)
 
+    args.config = resolve_config(args.dataset, args.config)
     ds = load_dataset(args.dataset, args.config, split=args.split, streaming=True, data_dir=args.data_dir)
     first = next(iter(ds))
     cols = list(first.keys())

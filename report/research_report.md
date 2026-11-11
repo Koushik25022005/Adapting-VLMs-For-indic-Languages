@@ -37,6 +37,8 @@ on Indic data?*
 
 ### 2.2 Training data: Chitrakshara-Cap
 
+Source: Hugging Face dataset `krutrim-ai-labs/chitrakshara`, config `Chitrakshara-Cap`.
+
 Chitrakshara rows are interleaved web documents: aligned lists of images (URLs) and text
 paragraphs, plus per-image metadata. We stream the corpus and turn every image into an
 image–caption pair. The caption is the paragraph just before the image, else the one just after it,

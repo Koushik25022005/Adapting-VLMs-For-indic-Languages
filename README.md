@@ -17,7 +17,8 @@ Indic-LLaVA-Bench and Indic-MM-Vet), and compares it with **Chitrarth** in
   set `PYTHON=/path/to/python3.13`.
 * An NVIDIA GPU with CUDA. QLoRA (bitsandbytes 4-bit) does not run on CPU. Training needs
   ≥ 24 GB with the default config, and 40–80 GB is comfortable.
-* Access to the Hugging Face Hub (`Qwen/Qwen2.5-VL-7B-Instruct`, Chitrakshara-Cap, `lmms-lab/POPE`,
+* Access to the Hugging Face Hub (`Qwen/Qwen2.5-VL-7B-Instruct`, `krutrim-ai-labs/chitrakshara`
+  (config `Chitrakshara-Cap`, the default), `lmms-lab/POPE`,
   `MBZUAI/multilingual-llava-bench-in-the-wild`). Set `HF_TOKEN` if a dataset is gated.
 * `OPENAI_API_KEY` for the BharatBench GPT judges.
 

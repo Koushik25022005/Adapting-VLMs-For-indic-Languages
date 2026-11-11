@@ -80,6 +80,7 @@ def _run(tmp_path, monkeypatch, rows, extra=()):
     import datasets
 
     monkeypatch.setattr(datasets, "load_dataset", lambda *a, **k: rows)
+    monkeypatch.setattr(datasets, "get_dataset_config_names", lambda name: ["Chitrakshara-Cap", "Chitrakshara-IL"])
     monkeypatch.setattr(pdm, "load_image",
                         lambda v, timeout=10: None if "dead" in str(v) else Image.new("RGB", (128, 96)))
     out = tmp_path / "out"
@@ -119,3 +120,31 @@ def test_main_pairs_with_assumed_language(tmp_path, monkeypatch):
     _, recs, stats = _run(tmp_path, monkeypatch, rows, ["--languages", "Hindi", "--assume-language", "hi"])
     assert stats["format"] == "pairs" and len(recs) == 2
     assert {r["language"] for r in recs} == {"Hindi"}
+
+
+def test_resolve_config_case_insensitive():
+    lister = lambda name: ["Chitrakshara-Cap", "Chitrakshara-IL"]  # noqa: E731
+    assert pdm.resolve_config("krutrim-ai-labs/chitrakshara", "chitrakshara-cap", lister) == "Chitrakshara-Cap"
+    assert pdm.resolve_config("krutrim-ai-labs/chitrakshara", "CHITRAKSHARA-IL", lister) == "Chitrakshara-IL"
+    assert pdm.resolve_config("x", None, lister) is None
+    with pytest.raises(SystemExit):
+        pdm.resolve_config("krutrim-ai-labs/chitrakshara", "nope", lister)
+
+    def offline(name):
+        raise ConnectionError
+    assert pdm.resolve_config("x", "chitrakshara-cap", offline) == "chitrakshara-cap"
+
+
+def test_defaults_point_at_chitrakshara_cap(tmp_path, monkeypatch):
+    import datasets
+    seen = {}
+
+    def fake_load(name, config, **k):
+        seen.update(name=name, config=config)
+        return [{"text": SAMPLES["Tamil"], "image": "https://x/a.jpg"}]
+    monkeypatch.setattr(datasets, "load_dataset", fake_load)
+    monkeypatch.setattr(datasets, "get_dataset_config_names", lambda name: ["Chitrakshara-Cap", "Chitrakshara-IL"])
+    from PIL import Image
+    monkeypatch.setattr(pdm, "load_image", lambda v, timeout=10: Image.new("RGB", (128, 96)))
+    pdm.main(["--out", str(tmp_path / "o"), "--per-language", "1", "--languages", "Tamil"])
+    assert seen == {"name": "krutrim-ai-labs/chitrakshara", "config": "Chitrakshara-Cap"}
