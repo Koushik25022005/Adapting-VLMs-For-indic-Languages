@@ -22,6 +22,12 @@ on **Chitrakshara-Cap** and evaluates it in two ways, both written up in
   set `PYTHON=/path/to/python3.13`.
 * An NVIDIA GPU with CUDA. QLoRA (bitsandbytes 4-bit) does not run on CPU. Training needs
   ≥ 24 GB with the default config, and 40–80 GB is comfortable.
+* `scripts/setup_env.sh` reads the CUDA version your NVIDIA driver supports from `nvidia-smi`. On a
+  CUDA 12.4–12.9 driver it installs the CUDA 12.4 build of PyTorch (2.6.0), because the newest
+  PyTorch needs a CUDA 13 driver and otherwise reports `CUDA False`. Override with
+  `TORCH_CUDA=cu124` or `TORCH_CUDA=default`.
+* On a 24 GB card (e.g. RTX 4090) train with
+  `per_device_train_batch_size=2 gradient_accumulation_steps=8` appended to the train command.
 * Access to the Hugging Face Hub (`Qwen/Qwen2.5-VL-7B-Instruct`, `krutrim-ai-labs/chitrakshara`
   (config `Chitrakshara-Cap`, the default), `afaji/cvqa`, `floschne/xm3600`; for BharatBench
   also `lmms-lab/POPE` and `MBZUAI/multilingual-llava-bench-in-the-wild`). Set `HF_TOKEN` if a
