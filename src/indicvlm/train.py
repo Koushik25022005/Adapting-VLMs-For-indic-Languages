@@ -20,6 +20,20 @@ from pathlib import Path
 LLM_LORA_TARGETS = r"^(?!.*visual).*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)$"
 
 
+def pin_single_gpu(env=os.environ) -> bool:
+    """Make only one GPU visible unless this is a distributed (torchrun / accelerate) launch.
+
+    With several visible GPUs the Hugging Face Trainer wraps the model in ``nn.DataParallel``,
+    which splits ``pixel_values`` (one row per image patch) and ``image_grid_thw`` (one row per
+    image) separately. The two then disagree and the vision tower fails with
+    "CUDA error: device-side assert triggered". Must run before CUDA is initialised.
+    Returns True when it changed the environment."""
+    if "CUDA_VISIBLE_DEVICES" in env or any(k in env for k in ("LOCAL_RANK", "RANK", "WORLD_SIZE")):
+        return False
+    env["CUDA_VISIBLE_DEVICES"] = "0"
+    return True
+
+
 def load_config(path: str | None, overrides: list[str]) -> dict:
     import yaml
 
@@ -91,6 +105,9 @@ def main(argv=None):
     p.add_argument("overrides", nargs="*", help="key=value config overrides")
     args = p.parse_args(argv)
     cfg = load_config(args.config, args.overrides)
+    if pin_single_gpu():
+        print("Using GPU 0 only (set CUDA_VISIBLE_DEVICES to pick another; "
+              "use torchrun or accelerate launch for multi-GPU training).")
 
     import torch
     from transformers import Trainer, TrainingArguments, set_seed

@@ -155,3 +155,14 @@ def test_loaders_on_real_bharatbench(task):
         assert items and all(it["image"] and it["prompt"] for it in items)
     if task == "pope":
         assert len(LOADERS["pope"](BB, "Hindi")) == 8910
+
+
+def test_pin_single_gpu():
+    from indicvlm.train import pin_single_gpu
+
+    env = {}
+    assert pin_single_gpu(env) and env == {"CUDA_VISIBLE_DEVICES": "0"}
+    env = {"CUDA_VISIBLE_DEVICES": "1,2"}
+    assert not pin_single_gpu(env) and env["CUDA_VISIBLE_DEVICES"] == "1,2"  # the user's choice wins
+    env = {"LOCAL_RANK": "0"}
+    assert not pin_single_gpu(env) and "CUDA_VISIBLE_DEVICES" not in env   # distributed launch
