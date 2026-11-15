@@ -82,55 +82,55 @@ because a different judge makes the numbers not strictly comparable.
 
 | Language | Chitrarth | Qwen2.5-VL-7B + QLoRA (ours) | Δ (ours − Chitrarth) |
 |---|---:|---:|---:|
-| Telugu | 79.90 | — | — |
-| Hindi | 78.68 | — | — |
-| Bengali | 83.24 | — | — |
-| Malayalam | 85.29 | — | — |
-| Kannada | 85.52 | — | — |
-| Assamese | 55.59 | — | — |
-| Tamil | 83.28 | — | — |
-| Marathi | 79.17 | — | — |
-| Gujarati | 84.75 | — | — |
-| Odia | 82.03 | — | — |
-| English | 87.63 | — | — |
-| **Indic avg (10)** | 79.75 | — | — |
-| **All avg (11)** | 80.46 | — | — |
+| Telugu | 79.90 | 64.68 | -15.22 |
+| Hindi | 78.68 | 52.50 | -26.18 |
+| Bengali | 83.24 | 51.70 | -31.54 |
+| Malayalam | 85.29 | 99.97 | +14.68 |
+| Kannada | 85.52 | 100.00 | +14.48 |
+| Assamese | 55.59 | 49.36 | -6.23 |
+| Tamil | 83.28 | 5.86 | -77.42 |
+| Marathi | 79.17 | 100.00 | +20.83 |
+| Gujarati | 84.75 | 97.51 | +12.76 |
+| Odia | 82.03 | 26.46 | -55.57 |
+| English | 87.63 | 100.00 | +12.37 |
+| **Indic avg (10)** | 79.75 | 64.80 | -14.94 |
+| **All avg (11)** | 80.46 | 68.00 | -12.46 |
 
 #### LLaVA-Bench
 
 | Language | Chitrarth | Qwen2.5-VL-7B + QLoRA (ours) | Δ (ours − Chitrarth) |
 |---|---:|---:|---:|
-| Telugu | 54.80 | — | — |
-| Hindi | 51.50 | — | — |
-| Bengali | 53.70 | — | — |
-| Malayalam | 55.50 | — | — |
-| Kannada | 58.10 | — | — |
-| Assamese | 59.10 | — | — |
-| Tamil | 58.30 | — | — |
-| Marathi | 52.80 | — | — |
-| Gujarati | 55.90 | — | — |
-| Odia | 62.80 | — | — |
-| English | 67.90 | — | — |
-| **Indic avg (10)** | 56.25 | — | — |
-| **All avg (11)** | 57.31 | — | — |
+| Telugu | 54.80 | 18.70 | -36.10 |
+| Hindi | 51.50 | 20.70 | -30.80 |
+| Bengali | 53.70 | 21.30 | -32.40 |
+| Malayalam | 55.50 | 17.80 | -37.70 |
+| Kannada | 58.10 | 20.30 | -37.80 |
+| Assamese | 59.10 | 18.50 | -40.60 |
+| Tamil | 58.30 | 19.20 | -39.10 |
+| Marathi | 52.80 | 17.00 | -35.80 |
+| Gujarati | 55.90 | 20.90 | -35.00 |
+| Odia | 62.80 | 17.00 | -45.80 |
+| English | 67.90 | 30.70 | -37.20 |
+| **Indic avg (10)** | 56.25 | 19.14 | -37.11 |
+| **All avg (11)** | 57.31 | 20.19 | -37.12 |
 
 #### MMVet
 
 | Language | Chitrarth | Qwen2.5-VL-7B + QLoRA (ours) | Δ (ours − Chitrarth) |
 |---|---:|---:|---:|
-| Telugu | 43.76 | — | — |
-| Hindi | 38.85 | — | — |
-| Bengali | 33.24 | — | — |
-| Malayalam | 25.36 | — | — |
-| Kannada | 46.19 | — | — |
-| Assamese | 37.29 | — | — |
-| Tamil | 34.31 | — | — |
-| Marathi | 40.96 | — | — |
-| Gujarati | 39.03 | — | — |
-| Odia | 19.67 | — | — |
-| English | 30.49 | — | — |
-| **Indic avg (10)** | 35.87 | — | — |
-| **All avg (11)** | 35.38 | — | — |
+| Telugu | 43.76 | 10.69 | -33.07 |
+| Hindi | 38.85 | 11.83 | -27.02 |
+| Bengali | 33.24 | 11.97 | -21.27 |
+| Malayalam | 25.36 | 16.65 | -8.71 |
+| Kannada | 46.19 | 12.43 | -33.76 |
+| Assamese | 37.29 | 10.28 | -27.01 |
+| Tamil | 34.31 | 16.01 | -18.30 |
+| Marathi | 40.96 | 11.61 | -29.35 |
+| Gujarati | 39.03 | 17.34 | -21.69 |
+| Odia | 19.67 | 19.59 | -0.08 |
+| English | 30.49 | 37.75 | +7.26 |
+| **Indic avg (10)** | 35.87 | 13.84 | -22.03 |
+| **All avg (11)** | 35.38 | 16.01 | -19.36 |
 <!-- END:BHARATBENCH_RESULTS -->
 
 ## 4. Discussion

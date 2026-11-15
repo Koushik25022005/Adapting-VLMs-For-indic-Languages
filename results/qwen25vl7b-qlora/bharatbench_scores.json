@@ -1,0 +1,61 @@
+{
+  "model": "qwen25vl7b-qlora",
+  "pope_scorer": "muril",
+  "scores": {
+    "Telugu": {
+      "POPE": 64.68,
+      "LLaVA-Bench": 18.7,
+      "MMVet": 10.69
+    },
+    "Hindi": {
+      "POPE": 52.5,
+      "LLaVA-Bench": 20.7,
+      "MMVet": 11.83
+    },
+    "Bengali": {
+      "POPE": 51.7,
+      "LLaVA-Bench": 21.3,
+      "MMVet": 11.97
+    },
+    "Malayalam": {
+      "POPE": 99.97,
+      "LLaVA-Bench": 17.8,
+      "MMVet": 16.65
+    },
+    "Kannada": {
+      "POPE": 100.0,
+      "LLaVA-Bench": 20.3,
+      "MMVet": 12.43
+    },
+    "Assamese": {
+      "POPE": 49.36,
+      "LLaVA-Bench": 18.5,
+      "MMVet": 10.28
+    },
+    "Tamil": {
+      "POPE": 5.86,
+      "LLaVA-Bench": 19.2,
+      "MMVet": 16.01
+    },
+    "Marathi": {
+      "POPE": 100.0,
+      "LLaVA-Bench": 17.0,
+      "MMVet": 11.61
+    },
+    "Gujarati": {
+      "POPE": 97.51,
+      "LLaVA-Bench": 20.9,
+      "MMVet": 17.34
+    },
+    "Odia": {
+      "POPE": 26.46,
+      "LLaVA-Bench": 17.0,
+      "MMVet": 19.59
+    },
+    "English": {
+      "POPE": 100.0,
+      "LLaVA-Bench": 30.7,
+      "MMVet": 37.75
+    }
+  }
+}
