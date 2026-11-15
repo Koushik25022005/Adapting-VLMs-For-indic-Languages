@@ -1,13 +1,18 @@
 # Adapting VLMs for Indic Languages
 
 This repository fine-tunes **Qwen2.5-VL-7B-Instruct** with **QLoRA** (PEFT + bitsandbytes 4-bit)
-on **Chitrakshara-Cap**, evaluates it with the official **BharatBench** evaluators (Indic-POPE,
-Indic-LLaVA-Bench and Indic-MM-Vet), and compares it with **Chitrarth** in
-[`report/research_report.md`](report/research_report.md).
+on **Chitrakshara-Cap** and evaluates it in two ways, both written up in
+[`report/research_report.md`](report/research_report.md):
 
-> **Results status:** no training or evaluation run has been done yet. The report's results
-> tables show "—" for our model until the pipeline below has been run on a GPU machine. The
-> Chitrarth numbers in `results/chitrarth_bharatbench.json` are copied from the
+* **CVQA** and **XM3600**: the QLoRA model against the zero-shot base model. No judge model or
+  API key is needed. This is the default evaluation.
+* **BharatBench** (Indic-POPE, Indic-LLaVA-Bench and Indic-MM-Vet, official evaluators): the
+  QLoRA model against **Chitrarth**. Optional, GPT-judged.
+
+> **Results status:** the QLoRA model has BharatBench scores
+> (`results/qwen25vl7b-qlora/bharatbench_scores.json`). CVQA and XM3600 have not been run yet;
+> their tables in the report are empty until `scripts/run_cvqa_xm3600.sh` has been run on a GPU
+> machine. The Chitrarth numbers in `results/chitrarth_bharatbench.json` are copied from the
 > [Chitrarth README](https://github.com/ola-krutrim/Chitrarth#5-evaluation-results).
 
 ## Requirements
@@ -18,9 +23,10 @@ Indic-LLaVA-Bench and Indic-MM-Vet), and compares it with **Chitrarth** in
 * An NVIDIA GPU with CUDA. QLoRA (bitsandbytes 4-bit) does not run on CPU. Training needs
   ≥ 24 GB with the default config, and 40–80 GB is comfortable.
 * Access to the Hugging Face Hub (`Qwen/Qwen2.5-VL-7B-Instruct`, `krutrim-ai-labs/chitrakshara`
-  (config `Chitrakshara-Cap`, the default), `lmms-lab/POPE`,
-  `MBZUAI/multilingual-llava-bench-in-the-wild`). Set `HF_TOKEN` if a dataset is gated.
-* `OPENAI_API_KEY` for the BharatBench GPT judges.
+  (config `Chitrakshara-Cap`, the default), `afaji/cvqa`, `floschne/xm3600`; for BharatBench
+  also `lmms-lab/POPE` and `MBZUAI/multilingual-llava-bench-in-the-wild`). Set `HF_TOKEN` if a
+  dataset is gated.
+* `OPENAI_API_KEY`, only for the BharatBench GPT judges.
 
 ## Quick start
 
@@ -29,11 +35,6 @@ bash scripts/setup_env.sh
 ```
 
 ```bash
-bash scripts/setup_bharatbench.sh
-```
-
-```bash
-export OPENAI_API_KEY=sk-...
 bash scripts/run_pipeline.sh
 ```
 
@@ -42,14 +43,50 @@ bash scripts/run_pipeline.sh
 | Step | Command | Output |
 |---|---|---|
 | 1. Sample Chitrakshara-Cap (balanced per language) | `python -m indicvlm.prepare_data --per-language 5000` | `data/chitrakshara_cap/{train,val}.jsonl`, `stats.json` |
-| 2. Download benchmark images | `python scripts/download_bharatbench_images.py` | `data/bharatbench_images/` |
-| 3. QLoRA training | `python -m indicvlm.train --config configs/qlora_qwen25vl_chitrakshara.yaml` | `outputs/.../final_adapter` |
-| 4. BharatBench generation | `python -m indicvlm.infer_bharatbench --adapter <dir> --load-4bit --out results/responses/qwen25vl7b-qlora` | evaluator-ready response files |
-| 5. Official scoring | `bash scripts/run_bharatbench.sh results/responses/qwen25vl7b-qlora qwen25vl7b-qlora` | `results/qwen25vl7b-qlora/bharatbench_scores.json` |
-| 6. Fill the report | `python -m indicvlm.update_report --ours results/qwen25vl7b-qlora/bharatbench_scores.json [--base ...]` | `report/research_report.md` |
+| 2. QLoRA training | `python -m indicvlm.train --config configs/qlora_qwen25vl_chitrakshara.yaml` | `outputs/.../final_adapter` |
+| 3. CVQA, base and QLoRA | `python -m indicvlm.eval_cvqa --load-4bit [--adapter <dir>]` | `results/<run>/cvqa_scores.json`, `cvqa_predictions.jsonl` |
+| 4. XM3600, base and QLoRA | `python -m indicvlm.eval_xm3600 --load-4bit [--adapter <dir>]` | `results/<run>/xm3600_scores.json`, `xm3600_predictions.jsonl` |
+| 5. Fill the report | `python -m indicvlm.update_report --cvqa-base ... --cvqa-ours ... --xm3600-base ... --xm3600-ours ...` | `report/research_report.md` |
 
-The pipeline also scores the zero-shot base model (set `SKIP_BASE=1` to skip it). This lets the
-report separate the effect of the QLoRA adaptation from the base model's own Indic ability.
+Steps 3–5 score the zero-shot base model and the adapter (run names `qwen25vl7b-base` and
+`qwen25vl7b-qlora`), so the report shows the effect of the QLoRA adaptation alone.
+
+### CVQA and XM3600 with an adapter you already trained
+
+```bash
+ADAPTER=outputs/qwen25vl7b-chitrakshara-qlora/final_adapter bash scripts/run_cvqa_xm3600.sh
+```
+
+This runs steps 3–5. `BENCHMARKS=cvqa` or `BENCHMARKS=xm3600` runs one benchmark, `SKIP_BASE=1`
+reuses the base model's existing score files, and `LIMIT=20` is a quick smoke test.
+
+| Benchmark | What it measures | Languages | Metric |
+|---|---|---|---|
+| **CVQA** (`afaji/cvqa`) | Multiple-choice VQA about local culture. Not what the adapter was trained on, so it shows whether caption tuning hurt question answering. | The India subsets by default (`--countries India`; pass `--countries` with no value for every country, or `--languages Hindi Tamil`) | Accuracy on the option letter, asked in the local language and in English. "Unparsed %" is the share of responses that name no option. |
+| **XM3600** (`floschne/xm3600`) | Captioning, the task the adapter was trained on. | Hindi, Bengali, Telugu, English (`--languages hi bn te en`) | CIDEr-D against the human captions, plus the share of captions in the requested language and the average length. |
+
+CIDEr-D is computed by `indicvlm.cider` (pure Python, one tokenizer for references and
+predictions), so it compares the two models fairly but is not comparable with published XM3600
+numbers. If your copy of CVQA has no answer labels, `eval_cvqa` still writes the predictions and
+says that no accuracy was computed.
+
+### BharatBench (optional)
+
+```bash
+bash scripts/setup_bharatbench.sh
+```
+
+```bash
+export OPENAI_API_KEY=sk-...
+BENCHMARKS="cvqa xm3600 bharatbench" bash scripts/run_pipeline.sh
+```
+
+| Step | Command | Output |
+|---|---|---|
+| Download benchmark images | `python scripts/download_bharatbench_images.py` | `data/bharatbench_images/` |
+| Generation | `python -m indicvlm.infer_bharatbench --adapter <dir> --load-4bit --out results/responses/qwen25vl7b-qlora` | evaluator-ready response files |
+| Official scoring | `bash scripts/run_bharatbench.sh results/responses/qwen25vl7b-qlora qwen25vl7b-qlora` | `results/qwen25vl7b-qlora/bharatbench_scores.json` |
+| Fill the report | `python -m indicvlm.update_report --ours results/qwen25vl7b-qlora/bharatbench_scores.json [--base ...]` | `report/research_report.md` |
 
 ### Streaming instead of a local copy
 
@@ -102,8 +139,9 @@ stream without a GPU:
 
 ```
 configs/                 training config (QLoRA hyper-parameters)
-src/indicvlm/            prepare_data, data (collator), train, infer_bharatbench, collect_scores, update_report
-scripts/                 env setup, BharatBench setup/scoring, image download, end-to-end pipeline
+src/indicvlm/            prepare_data, data (collator), train, eval_cvqa, eval_xm3600, cider,
+                         infer_bharatbench, collect_scores, update_report
+scripts/                 env setup, CVQA/XM3600 run, BharatBench setup/scoring, image download, end-to-end pipeline
 results/                 chitrarth_bharatbench.json (published baseline) + per-run scores
 report/research_report.md
 tests/                   CPU unit tests (pytest)

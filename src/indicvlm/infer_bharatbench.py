@@ -125,10 +125,10 @@ class QwenVL:
         from PIL import Image
 
         texts, images = [], []
-        for img_path, prompt in batch:
+        for img, prompt in batch:  # img: a path or an already-decoded PIL image
             msgs = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": prompt}]}]
             texts.append(self.processor.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True))
-            images.append(Image.open(img_path).convert("RGB"))
+            images.append((img if isinstance(img, Image.Image) else Image.open(img)).convert("RGB"))
         enc = self.processor(text=texts, images=images, padding=True, return_tensors="pt").to(self.model.device)
         with torch.inference_mode():
             out = self.model.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False,

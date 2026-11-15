@@ -1,9 +1,9 @@
 # Adapting Qwen2.5-VL-7B-Instruct to Indic Languages with QLoRA on Chitrakshara-Cap: A BharatBench Comparison with Chitrarth
 
-> **Status:** the pipeline is implemented, but training and evaluation have **not been run yet**.
-> Every "ours" / "zero-shot" cell below shows "—" until `scripts/run_pipeline.sh` finishes and
-> `python -m indicvlm.update_report` writes the measured numbers in. The Chitrarth column holds the
-> published numbers from the Chitrarth README.
+> **Status:** the QLoRA model has been scored on BharatBench (Section 3.1). CVQA and XM3600
+> (Sections 3.2 and 3.3) have **not been run yet**: their tables are empty until
+> `bash scripts/run_cvqa_xm3600.sh` finishes and writes the measured numbers in. The Chitrarth
+> column holds the published numbers from the Chitrarth README.
 
 ## Abstract
 
@@ -75,7 +75,35 @@ The Chitrarth numbers come from its public README. We did not re-run them. If a 
 model has to be used (for example, because `gpt-4-0613` is no longer available), we report it here,
 because a different judge makes the numbers not strictly comparable.
 
+### 2.5 Evaluation: CVQA and XM3600 (base model vs QLoRA)
+
+These two benchmarks compare the QLoRA model with the zero-shot Qwen2.5-VL-7B-Instruct base
+model directly. Both models are loaded with the same 4-bit NF4 quantisation and decoded greedily,
+so the adapter is the only difference. Neither benchmark uses a judge model.
+
+| Benchmark | Task | Languages | Metric |
+|---|---|---|---|
+| CVQA (`afaji/cvqa`, test split) | Culturally grounded multiple-choice VQA, 4 options | The India subsets (`--countries India`) | Accuracy on the option letter, with the question in the local language and in English |
+| XM3600 (`floschne/xm3600`) | Image captioning, 3,600 images per language | Hindi, Bengali, Telugu, English | CIDEr-D against the human captions |
+
+*CVQA.* The prompt is the question, the four options labelled A–D, and "Answer with the letter of
+the correct option only." A response counts as correct when the letter it names (or, failing that,
+the single option whose text it contains) is the labelled one. Responses that name no option are
+wrong; their share is reported as "Unparsed %", which shows whether a model has stopped following
+the answer format.
+
+*XM3600.* The prompt is "Describe this image in one short sentence in {language}." with at most
+64 new tokens. CIDEr-D is computed by `indicvlm.cider`, with one tokenizer for references and
+predictions (lower-case, punctuation removed, split on whitespace). The scores are therefore
+comparable between the two models but not with published XM3600 numbers. We also report the share
+of captions written in the requested language (by script) and the average caption length.
+
+XM3600 measures the task the adapter was trained on (captioning); CVQA measures a task it was not
+trained on (question answering).
+
 ## 3. Results
+
+### 3.1 BharatBench (vs Chitrarth)
 
 <!-- BEGIN:BHARATBENCH_RESULTS -->
 #### POPE
@@ -133,6 +161,18 @@ because a different judge makes the numbers not strictly comparable.
 | **All avg (11)** | 35.38 | 16.01 | -19.36 |
 <!-- END:BHARATBENCH_RESULTS -->
 
+### 3.2 CVQA (base model vs QLoRA)
+
+<!-- BEGIN:CVQA_RESULTS -->
+_No scores yet._
+<!-- END:CVQA_RESULTS -->
+
+### 3.3 XM3600 (base model vs QLoRA)
+
+<!-- BEGIN:XM3600_RESULTS -->
+_No scores yet._
+<!-- END:XM3600_RESULTS -->
+
 ## 4. Discussion
 
 _To be written once the measured results are available. Points to cover: (i) per-language gains over
@@ -148,6 +188,9 @@ supervision helps hallucination (POPE) more than open-ended reasoning (LLaVA-Ben
 * BharatBench uses GPT judges. Scores depend on the judge model and version, and on API
   non-determinism.
 * We train on a subset of Chitrakshara-Cap because of compute limits.
+* XM3600 covers only three of the ten Indic languages (Hindi, Bengali, Telugu), and its CIDEr-D
+  here uses our own tokenizer. CVQA's India subsets are small (a few hundred questions each), so
+  per-language differences of a few points are within noise.
 * The Chitrarth numbers are copied from the published README, not reproduced.
 
 ## References
@@ -155,6 +198,9 @@ supervision helps hallucination (POPE) more than open-ended reasoning (LLaVA-Ben
 * S. Khan et al. *Chitrarth: Bridging Vision and Language for a Billion People.* arXiv:2502.15392, 2025.
 * Krutrim AI Labs. *BharatBench.* https://github.com/ola-krutrim/BharatBench
 * Krutrim AI Labs. *Chitrakshara* multilingual multimodal dataset (Chitrakshara-Cap).
+* D. Romero et al. *CVQA: Culturally-diverse Multilingual Visual Question Answering Benchmark.* NeurIPS 2024.
+* A. Thapliyal et al. *Crossmodal-3600: A Massively Multilingual Multimodal Evaluation Dataset.* EMNLP 2022.
+* R. Vedantam et al. *CIDEr: Consensus-based Image Description Evaluation.* CVPR 2015.
 * Qwen Team. *Qwen2.5-VL Technical Report.* 2025.
 * T. Dettmers et al. *QLoRA: Efficient Finetuning of Quantized LLMs.* NeurIPS 2023.
 * E. Hu et al. *LoRA: Low-Rank Adaptation of Large Language Models.* ICLR 2022.
